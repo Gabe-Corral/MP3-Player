@@ -1,33 +1,34 @@
 import tkinter as tk
 import os, glob
 from pathlib import Path
+import vlc
 
 class Main:
 
     def __init__(self):
         self.root = tk.Tk()
+
+        #canvas one
         self.root.configure(bg='#073642')
-
         self.wrapper_one = tk.LabelFrame(self.root)
-
         self.canvas = tk.Canvas(self.wrapper_one)
         self.canvas.pack(side=tk.LEFT, fill="y")
-
         self.y_scroll = tk.Scrollbar(self.wrapper_one, orient="vertical",
         command=self.canvas.yview)
         self.y_scroll.pack(side=tk.RIGHT, fill="y")
-
         self.frame_one = tk.Frame(self.canvas)
         self.canvas.configure(yscrollcommand=self.y_scroll.set, bg='#073642')
         self.canvas.bind("<Configure>",
         lambda e: self.canvas.configure(scrollregion = self.canvas.bbox('all')))
         self.canvas.create_window((0, 0), window=self.frame_one, anchor="nw")
-
         self.wrapper_one.pack(fill="y", side="left")
 
         self.directory = Path("/home/gaubay/Music/music/")
         self.path = "/home/gaubay/Music/music/"
         self.folder_names = []
+
+        self.playing = False
+        self.buttons = []
 
         self.get_folder_name()
 
@@ -55,10 +56,31 @@ class Main:
         tk.mainloop()
 
     def display_details(self, foldername):
-        local_path = Path(self.path + foldername)
-        for file in local_path.glob("**/*"):
-            print(str(file))
+        if len(self.buttons) > 0:
+            self.delete_buttons()
 
+        local_path = Path(self.path + foldername)
+        
+        for file in local_path.glob("**/*"):
+            filename = str(file).split(self.path + foldername + "/")[1]
+            button = tk.Button(self.root, text=filename,
+            command=lambda filename=filename: self.play_song(self.path + foldername + "/" + filename)).pack()
+            self.buttons.append(button)
+
+        tk.Button(self.root, text="Stop", command=self.stop_song).pack()
+
+    def delete_buttons(self):
+        for child in self.root.winfo_children():
+            if str(child).startswith(".!button"):
+                child.destroy()
+
+    def play_song(self, song_path):
+        print(song_path)
+        self.currrnt_song = vlc.MediaPlayer(song_path)
+        self.currrnt_song.play()
+
+    def stop_song(self):
+        self.currrnt_song.stop()
 
 if __name__=="__main__":
     main = Main()
