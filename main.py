@@ -4,14 +4,18 @@ from pathlib import Path
 import vlc
 import json
 from PIL import ImageTk, Image
+from eyed3 import id3
+import eyed3
+import collections
+import time
 
 class Main:
 
     def __init__(self):
         self.root = tk.Tk()
-
-        #canvas/labelframe one
         self.root.configure(bg='#073642')
+
+        #canvas/labelframe 1
         self.wrapper_one = tk.LabelFrame(self.root)
         self.canvas = tk.Canvas(self.wrapper_one)
         self.canvas.pack(side=tk.LEFT, fill="y")
@@ -37,12 +41,16 @@ class Main:
         self.path = "/home/gaubay/Music/music/"
         self.folder_names = []
         self.file_names = []
+        self.current_background_path = ""
 
         self.playing = False
         self.paused = False
         self.buttons = []
-        self.current_background_path = ""
         self.volume = 50
+        self.tag = id3.Tag()
+        self.current_working_directory = ""
+        self.song_titles = {}
+        self.after = 0
 
         self.get_folder_name()
 
@@ -69,6 +77,7 @@ class Main:
         tk.mainloop()
 
     def display_details(self, foldername):
+        self.song_titles = {}
         if len(self.buttons) > 0:
             self.delete_buttons()
 
@@ -76,24 +85,25 @@ class Main:
 
         for file in local_path.glob("**/*.mp3"):
             filename = str(file).split(self.path + foldername + "/")[1]
-            button = tk.Button(self.root, text=filename, width=40,
-            command=lambda filename=filename: self.play_song(self.path +
-            foldername + "/" + filename)).pack()
-            self.file_names.append(filename)
-            self.buttons.append(button)
-
-        # for file in local_path.glob("**/*.jpg"):
-        #     print(str(file))
-        #     self.current_background_path = str(file)
-        #     canvas = tk.Canvas(width=600, height=800)
-        #     canvas.pack(expand=tk.YES, fill=tk.BOTH)
-        #     image = ImageTk.PhotoImage(Image.open(self.current_background_path))
-        #     canvas.create_image(10, 10, image=image, anchor=tk.NW)
+            self.tag.parse(self.path + foldername + "/" + filename)
+            track_num = str(self.tag.track_num).split(",")[0].split("(")[1]
+            title = track_num + " " + self.tag.title
+            duration = eyed3.load(self.path + foldername + "/" + filename).info.time_secs
+            self.song_titles[track_num] = [title, filename, duration]
+        self.create_label_frame()
+        for i in range(len(self.song_titles) + 1):
+            if i > 0:
+                button = tk.Button(self.frame_three, text=self.song_titles[str(i)][0],
+                 width=40, command=lambda i=i: self.play_song(foldername, i,
+                self.song_titles[str(i)][2]),
+                bg='#073642', fg='#eee8d5').pack()
+                self.buttons.append(i)
 
     def delete_buttons(self):
-        for child in self.root.winfo_children():
-            if str(child).startswith(".!button"):
-                child.destroy()
+        self.frame_three.destroy()
+        self.wrapper_three.destroy()
+        self.canvas_three.destroy()
+        self.y_scroll_two.destroy()
 
     def create_controls(self):
         tk.Button(self.frame_two, text="Pause/Play", command=self.pause_play,
@@ -113,15 +123,34 @@ class Main:
             self.currrnt_song.play()
             self.paused = False
 
-    def play_song(self, song_path):
+    def play_song(self, foldername, index, duration):
         if self.playing == False:
             self.playing = True
-            self.currrnt_song = vlc.MediaPlayer(song_path)
+            self.currrnt_song = vlc.MediaPlayer(self.path
+           + foldername + "/" + self.song_titles[str(index)][1])
             self.currrnt_song.play()
+
+            if self.after != 0 :
+                self.root.after_cancel(self.after)
+
+            self.after = self.root.after(int(duration)*1000, lambda:
+            self.playing_duration(foldername, index))
         elif self.playing == True:
             self.stop_song()
-            self.currrnt_song = vlc.MediaPlayer(song_path)
+            self.currrnt_song = vlc.MediaPlayer(self.path
+           + foldername + "/" + self.song_titles[str(index)][1])
             self.currrnt_song.play()
+            self.after = self.root.after(int(duration)*1000, lambda:
+            self.playing_duration(foldername, index))
+
+    def playing_duration(self, foldername, index):
+        print("Ended", index)
+        index += 1
+        duration = duration = eyed3.load(self.path
+        + foldername + "/" + self.song_titles[str(index)][1]).info.time_secs
+        self.stop_song()
+        self.play_song(foldername, index, duration)
+        print("playing", index)
 
     def set_volume(self, scale_up_down):
         if scale_up_down == "up":
@@ -129,6 +158,20 @@ class Main:
         elif scale_up_down == "down":
             self.volume -= 5
         self.currrnt_song.audio_set_volume(self.volume)
+
+    def create_label_frame(self):
+        self.wrapper_three = tk.LabelFrame(self.root)
+        self.canvas_three = tk.Canvas(self.wrapper_three)
+        self.canvas_three.pack(side=tk.LEFT, fill="y")
+        self.y_scroll_two = tk.Scrollbar(self.wrapper_three, orient="vertical",
+        command=self.canvas_three.yview)
+        self.y_scroll_two.pack(side=tk.RIGHT, fill="y")
+        self.frame_three = tk.Frame(self.canvas_three)
+        self.canvas_three.configure(yscrollcommand=self.y_scroll_two.set, bg='#073642')
+        self.canvas_three.bind("<Configure>",
+        lambda e: self.canvas_three.configure(scrollregion = self.canvas_three.bbox('all')))
+        self.canvas_three.create_window((0, 0), window=self.frame_three, anchor="nw")
+        self.wrapper_three.pack(fill="y", side="left")
 
 
     def stop_song(self):
