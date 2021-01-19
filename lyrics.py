@@ -41,7 +41,6 @@ class LyricsGui:
                 try:
                     self.filename = wget.download(self.image, out="artwork/")
                     art['artwork'][self.song_name] = self.filename[9:]
-
                     with open('config.json', 'w') as json_write:
                             json.dump(art, json_write)
                             self.get_lyrics()
@@ -76,7 +75,7 @@ class LyricsGui:
         canvas.create_window((0, 0), window=frame, width=680, anchor="nw")
         wrapper.pack(fill="y")
 
-        if self.filename != "" or self.show_image:
+        if self.show_image and self.filename == "":
             with open("config.json") as json_file:
                 data = json.load(json_file)
 
@@ -85,6 +84,12 @@ class LyricsGui:
                 label = tk.Label(self.child, image=photo)
                 label.image = photo
                 label.pack()
+        elif self.filename != "":
+            im = Image.open("artwork/" + self.filename[9:]).resize((700, 600))
+            photo = ImageTk.PhotoImage(im)
+            label = tk.Label(self.child, image=photo)
+            label.image = photo
+            label.pack()
 
         tk.Label(frame, text=self.lyrics, bg='#073642', fg='#eee8d5',
         width=100).pack()

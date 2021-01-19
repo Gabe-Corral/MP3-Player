@@ -10,12 +10,15 @@ import collections
 import time
 from lyrics import LyricsGui
 import tkinter.ttk as ttk
+from ttkthemes import themed_tk as theme
 
 class Main:
 
     def __init__(self):
-        self.root = tk.Tk()
+        self.root = theme.ThemedTk()
         self.root.configure(bg='#073642')
+        self.root.get_themes()
+        self.root.set_theme("plastik")
 
         #canvas/labelframe 1
         self.wrapper_one = tk.LabelFrame(self.root)
@@ -160,12 +163,6 @@ class Main:
         self.unskip.image = unskip_img
         self.unskip.place(x=0, y=0)
 
-        # tk.Button(self.frame_two, text="Up",
-        # width=20, bg='#073642', fg='#eee8d5',
-        # command=lambda : self.set_volume("up")).place(x=0, y=30)
-        # tk.Button(self.frame_two, text="Down",
-        # width=20, bg='#073642', fg='#eee8d5',
-        # command=lambda : self.set_volume("down")).place(x=0, y=60)
         self.volume_bar()
 
         tk.Button(self.frame_two, text="Lyrics",
@@ -174,9 +171,10 @@ class Main:
         width=20, bg='#073642', fg='#eee8d5').place(x=630, y=0)
 
     def volume_bar(self):
+        volume_label = tk.Label(self.frame_two, text="Volume").place(x=0, y=50)
         self.volume_control = ttk.Scale(self.frame_two, from_=0,to=150,
         command=self.set_volume, value=50)
-        self.volume_control.place(x=0, y=75)
+        self.volume_control.place(x=0, y=75, height=15)
 
     def set_volume(self, x):
         new_volume = int(self.volume_control.get())
@@ -269,13 +267,14 @@ class Main:
         value=0, command=self.slide_song, length=350)
         self.song_label = tk.Label(self.frame_two, text=song)
 
-        self.slider.place(x=300, y=50)
-        self.song_label.pack()
+        self.slider.place(x=200, y=50, height=15)
+        self.song_label.place(x=340, y=30)
         self.current_time = 0
         self.update_timer()
 
     def slide_song(self, label):
-        self.time_label.config(text=int(self.slider.get()))
+        #self.time_label.config(text=int(self.slider.get()))
+        self.currrnt_song.set_time(int(self.slider.get())*1000)
 
     def get_lyrics(self, artist, song):
         song_name = song[2:]
