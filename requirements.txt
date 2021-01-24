@@ -1,0 +1,7 @@
+ttkthemes==3.2.0
+python_vlc==3.0.11115
+requests==2.25.1
+wget==3.2
+lyricsgenius==2.0.2
+eyed3==0.9.6
+Pillow==8.1.0

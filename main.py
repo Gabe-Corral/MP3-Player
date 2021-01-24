@@ -11,6 +11,7 @@ import time
 from lyrics import LyricsGui
 import tkinter.ttk as ttk
 from ttkthemes import themed_tk as theme
+from tkinter import filedialog
 
 class Main:
 
@@ -43,17 +44,18 @@ class Main:
         height=100, width=900)
         self.wrapper_two.pack(fill="x", side="bottom")
 
-        self.directory = Path("/home/gaubay/Music/music/")
-        self.path = "/home/gaubay/Music/music/"
+        self.path = ""
+        self.directory = ""
+        self.set_music_path()
         self.folder_names = []
         self.file_names = []
         self.current_background_path = ""
 
         #button images
-        self.play_button_img = Image.open("/home/gaubay/project/python/MP3-Player/assets/play.png").resize((25,25))
-        self.pause_button_img = Image.open("/home/gaubay/project/python/MP3-Player/assets/pause.png").resize((25,25))
-        self.skip_button_img = Image.open("/home/gaubay/project/python/MP3-Player/assets/skip.png").resize((25,25))
-        self.unskip_button_img = Image.open("/home/gaubay/project/python/MP3-Player/assets/unskip.png").resize((25,25))
+        self.play_button_img = Image.open("assets/play.png").resize((25,25))
+        self.pause_button_img = Image.open("assets/pause.png").resize((25,25))
+        self.skip_button_img = Image.open("assets/skip.png").resize((25,25))
+        self.unskip_button_img = Image.open("assets/unskip.png").resize((25,25))
 
         self.pause_btn = ""
         self.play_btn = ""
@@ -74,8 +76,23 @@ class Main:
         self.after = 0
         self.index = 0
         self.foldername = ""
+        self.dict = 1
 
         self.get_folder_name()
+
+    def set_music_path(self):
+        with open("config.json") as json_file:
+            data = json.load(json_file)
+            if data["music_path"] == "":
+                folder_selected = filedialog.askdirectory()
+                data["music_path"] = folder_selected
+                with open('config.json', 'w') as json_write:
+                    json.dump(data, json_write)
+                    self.path = data["music_path"] + "/"
+                    self.directory = Path(data["music_path"] + "/")
+            else:
+                self.path = data["music_path"] + "/"
+                self.directory = Path(str(data["music_path"]) + "/")
 
     def get_folder_name(self):
         for file in self.directory.glob("**"):
@@ -100,28 +117,76 @@ class Main:
         tk.mainloop()
 
     def display_details(self, foldername):
-        self.song_titles = {}
+        self.song_titles = []
+        current_dict_one = {}
+        current_dict_two = {}
+        current_dict_three = {}
+
         if len(self.buttons) > 0:
             self.delete_buttons()
 
         local_path = Path(self.path + foldername)
 
-        for file in local_path.glob("**/*.mp3"):
+        for file in local_path.glob("*.mp3"):
             filename = str(file).split(self.path + foldername + "/")[1]
             self.tag.parse(self.path + foldername + "/" + filename)
-            track_num = str(self.tag.track_num).split(",")[0].split("(")[1]
+            track_num = str(self.tag.track_num[0])
             title = track_num + " " + self.tag.title
             duration = eyed3.load(self.path + foldername + "/" + filename).info.time_secs
             artist = self.tag.artist
-            self.song_titles[track_num] = [title, filename, duration, artist]
+            if self.tag.disc_num[0] == 1 or self.tag.disc_num[0] == None:
+                current_dict_one[track_num] = [title, filename, duration, artist]
+            elif self.tag.disc_num[0] == 2:
+                current_dict_two[track_num] = [title, filename, duration, artist]
+            elif self.tag.disc_num[0] == 3:
+                current_dict_three[track_num] = [title, filename, duration, artist]
+
+        self.song_titles.append(current_dict_one)
+        if current_dict_two != {}:
+            self.song_titles.append(current_dict_two)
+        if current_dict_three != {}:
+            self.song_titles.append(current_dict_three)
+
         self.create_label_frame()
-        for i in range(len(self.song_titles) + 1):
+
+        if current_dict_two == {}:
+            for i in range(len(self.song_titles)):
+                for j in range(len(self.song_titles[i]) + 1):
+                    if j > 0:
+                        button = tk.Button(self.frame_three, text=self.song_titles[i][str(j)][0],
+                        width=100, command=lambda j=j: self.play_song(foldername, j,
+                        self.song_titles[i][str(j)][2], i),
+                        bg='#073642', fg='#eee8d5').pack()
+                        self.buttons.append(j)
+        else:
+            self.display_disc_buttons(foldername)
+
+    def display_disc_buttons(self, foldername):
+        for i in range(len(self.song_titles)):
+            button = tk.Button(self.frame_three, text="Disc" + " " + str(i + 1),
+            width=100, bg='#073642', fg='#eee8d5', command=lambda i=i:
+            self.display_disc(self.song_titles[i], foldername, i, len(self.song_titles))).pack()
+            self.buttons.append(i)
+
+    def display_disc(self, disc, foldername, disc_num, disc_count):
+        self.disc = disc_num
+        self.destroy_disc_buttons(disc_count)
+        for i in range(len(disc) + 1):
             if i > 0:
-                button = tk.Button(self.frame_three, text=self.song_titles[str(i)][0],
+                button = tk.Button(self.frame_three, text=self.song_titles[disc_num][str(i)][0],
                 width=100, command=lambda i=i: self.play_song(foldername, i,
-                self.song_titles[str(i)][2]),
+                self.song_titles[disc_num][str(i)][2], disc_num),
                 bg='#073642', fg='#eee8d5').pack()
-                self.buttons.append(i)
+
+
+    def destroy_disc_buttons(self, disc_count):
+        children = self.frame_three.winfo_children()
+        first = True
+        for child in children:
+            num = str(child)[36:]
+            if first == False and int(num) > disc_count:
+                child.destroy()
+            first = False
 
     def delete_buttons(self):
         self.frame_three.destroy()
@@ -166,15 +231,15 @@ class Main:
         self.volume_bar()
 
         tk.Button(self.frame_two, text="Lyrics",
-        command= lambda: self.get_lyrics(self.song_titles[str(self.index)][3],
-        self.song_titles[str(self.index)][0]),
+        command= lambda: self.get_lyrics(self.song_titles[self.dict][str(self.index)][3],
+        self.song_titles[self.dict][str(self.index)][0]),
         width=20, bg='#073642', fg='#eee8d5').place(x=630, y=0)
 
     def volume_bar(self):
-        volume_label = tk.Label(self.frame_two, text="Volume").place(x=0, y=50)
+        volume_label = tk.Label(self.frame_two, text="Volume").place(x=0, y=65)
         self.volume_control = ttk.Scale(self.frame_two, from_=0,to=150,
         command=self.set_volume, value=50)
-        self.volume_control.place(x=0, y=75, height=15)
+        self.volume_control.place(x=0, y=85, height=15)
 
     def set_volume(self, x):
         new_volume = int(self.volume_control.get())
@@ -195,16 +260,17 @@ class Main:
             self.update_timer()
             self.change_play_pause()
 
-    def play_song(self, foldername, index, duration):
+    def play_song(self, foldername, index, duration, dict):
         self.foldername = foldername
-        song_name = self.song_titles[str(index)][0][2:]
+        song_name = self.song_titles[dict][str(index)][0][2:]
         self.index = index
+        self.dict = dict
 
         if self.playing == False:
             self.playing = True
             self.change_play_pause()
             self.currrnt_song = vlc.MediaPlayer(self.path
-           + foldername + "/" + self.song_titles[str(index)][1])
+           + foldername + "/" + self.song_titles[self.dict][str(index)][1])
             self.currrnt_song.play()
             self.create_slider(duration, song_name)
 
@@ -217,7 +283,7 @@ class Main:
             self.stop_song()
             self.root.after_cancel(self.after)
             self.currrnt_song = vlc.MediaPlayer(self.path
-           + foldername + "/" + self.song_titles[str(index)][1])
+           + foldername + "/" + self.song_titles[dict][str(index)][1])
             self.currrnt_song.play()
             self.create_slider(duration, song_name)
             self.after = self.root.after(int(duration)*1000, lambda:
@@ -227,19 +293,19 @@ class Main:
         self.index -= 1
         if self.index >= 1:
             duration = duration = eyed3.load(self.path
-            + self.foldername + "/" + self.song_titles[str(self.index)][1]).info.time_secs
+            + self.foldername + "/" + self.song_titles[self.dict][str(self.index)][1]).info.time_secs
             self.stop_song()
-            self.play_song(self.foldername, self.index, duration)
+            self.play_song(self.foldername, self.index, duration, self.dict)
         else:
             self.stop_song()
 
     def playing_duration(self, foldername, index):
         index += 1
-        if index <= len(self.song_titles):
+        if index <= len(self.song_titles[self.dict]):
             duration = duration = eyed3.load(self.path
-            + foldername + "/" + self.song_titles[str(index)][1]).info.time_secs
+            + foldername + "/" + self.song_titles[self.dict][str(index)][1]).info.time_secs
             self.stop_song()
-            self.play_song(foldername, index, duration)
+            self.play_song(foldername, index, duration, self.dict)
         else:
             self.stop_song()
 
@@ -265,10 +331,10 @@ class Main:
         unskip_img = ImageTk.PhotoImage(self.unskip_button_img)
         self.slider = ttk.Scale(self.frame_two, from_=0,to=duration, orient=tk.HORIZONTAL,
         value=0, command=self.slide_song, length=350)
-        self.song_label = tk.Label(self.frame_two, text=song)
+        self.song_label = tk.Label(self.frame_two, text="Current Song: " + song)
 
         self.slider.place(x=200, y=50, height=15)
-        self.song_label.place(x=340, y=30)
+        self.song_label.place(x=100, y=5)
         self.current_time = 0
         self.update_timer()
 

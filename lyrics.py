@@ -32,7 +32,7 @@ class LyricsGui:
                 url = "https://genius.p.rapidapi.com/search"
                 querystring = {"q": self.song_name + self.artist_name}
                 headers = {
-                    'x-rapidapi-key': "",
+                    'x-rapidapi-key': "API_KEY",
                     'x-rapidapi-host': "genius.p.rapidapi.com"
                     }
                 response = requests.request("GET", url, headers=headers, params=querystring)
@@ -51,7 +51,7 @@ class LyricsGui:
 
 
     def get_lyrics(self):
-        genius = lyricsgenius.Genius("")
+        genius = lyricsgenius.Genius("API_KEY")
         song = genius.search_song(self.song_name, self.artist_name)
         self.lyrics = song.lyrics
         self.create_new_window()
@@ -61,7 +61,7 @@ class LyricsGui:
         self.child.wm_title("EPIC MP3 PLAYER")
         self.child.geometry("700x800")
 
-        #frame
+        #label frame
         wrapper = tk.LabelFrame(self.child, bg='#073642')
         canvas = tk.Canvas(wrapper, width=680, bg='#073642')
         canvas.pack(side=tk.LEFT)
